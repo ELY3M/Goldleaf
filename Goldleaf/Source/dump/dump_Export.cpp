@@ -58,7 +58,7 @@ namespace dump
         s32 written = 0;
         bool got = false;
         Result rc = ncmContentMetaDatabaseList(metadb, &total, &written, metas, hos::MaxTitleCount, NcmContentMetaType_Unknown, ApplicationId, 0, U64_MAX, NcmContentInstallType_Full);
-        if((rc == 0) && (written > 0)) 
+        if((R_SUCCEEDED(rc)) && (written > 0)) 
         {
             for(s32 i = 0; i < written; i++)
             {
@@ -149,7 +149,10 @@ namespace dump
                             if(fappid == tid)
                             {
                                 orid = rid;
-                                exp->WriteFileBlock(outdir + "/" + rid + ".tik", &tkdata[j], 0x400);
+                                auto ftik = outdir + "/" + rid + ".tik";
+                                exp->StartFile(ftik, fs::FileMode::Write);
+                                exp->WriteFileBlock(ftik, &tkdata[j], 0x400);
+                                exp->EndFile(fs::FileMode::Write);
                                 tkey = etkey;
                                 break;
                             }
@@ -160,7 +163,13 @@ namespace dump
             f_close(&save);
             f_mount(NULL, "0", 1);
             fsStorageClose(&fatfs_bin);
-            if(!tkey.empty()) exp->WriteFileBlock(outdir + "/" + orid + ".cert", const_cast<u8*>(es::CertData), es::CertSize);
+            if(!tkey.empty())
+            {
+                auto fcert = outdir + "/" + orid + ".cert";
+                exp->StartFile(fcert, fs::FileMode::Write);
+                exp->WriteFileBlock(fcert, const_cast<u8*>(es::CertData), es::CertSize);
+                exp->EndFile(fs::FileMode::Write);
+            }
         }
     }
 
@@ -169,7 +178,7 @@ namespace dump
         char out[FS_MAX_PATH] = { 0 };
         Result rc = ncmContentStorageGetPath(st, out, FS_MAX_PATH, Id);
         String sst = "";
-        if(rc == 0) sst = String(out);
+        if(R_SUCCEEDED(rc)) sst = String(out);
         return sst;
     }
 

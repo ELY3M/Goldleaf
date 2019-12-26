@@ -21,7 +21,7 @@
 
 #include <hos/hos_Titles.hpp>
 #include <hos/hos_Content.hpp>
-#include <fs/fs_Explorer.hpp>
+#include <fs/fs_FileSystem.hpp>
 #include <fstream>
 #include <sstream>
 #include <iomanip>
@@ -40,11 +40,11 @@ namespace hos
         String path;
         NcmContentStorage cst;
         Result rc = ncmOpenContentStorage(&cst, static_cast<NcmStorageId>(this->Location));
-        if(rc == 0)
+        if(R_SUCCEEDED(rc))
         {
             char pout[FS_MAX_PATH] = { 0 };
             rc = ncmContentStorageGetPath(&cst, pout, FS_MAX_PATH, &this->NCAId);
-            if(rc == 0) path = String(pout);
+            if(R_SUCCEEDED(rc)) path = String(pout);
         }
         serviceClose(&cst.s);
         return path;
@@ -66,7 +66,7 @@ namespace hos
         NsApplicationControlData *ctdata = new NsApplicationControlData;
         size_t acsz = 0;
         Result rc = nsGetApplicationControlData(NsApplicationControlSource_Storage, this->ApplicationId, ctdata, sizeof(NsApplicationControlData), &acsz);
-        if((rc == 0) && !(acsz < sizeof(ctdata->nacp)))
+        if((R_SUCCEEDED(rc)) && !(acsz < sizeof(ctdata->nacp)))
         {
             nacp = new NacpStruct();
             memcpy(nacp, &ctdata->nacp, sizeof(NacpStruct));
@@ -74,7 +74,7 @@ namespace hos
         else
         {
             rc = nsGetApplicationControlData(NsApplicationControlSource_Storage, GetBaseApplicationId(this->ApplicationId, this->Type), ctdata, sizeof(NsApplicationControlData), &acsz);
-            if((rc == 0) && !(acsz < sizeof(ctdata->nacp)))
+            if((R_SUCCEEDED(rc)) && !(acsz < sizeof(ctdata->nacp)))
             {
                 nacp = new NacpStruct();
                 memcpy(nacp, &ctdata->nacp, sizeof(NacpStruct));
@@ -90,7 +90,7 @@ namespace hos
         NsApplicationControlData *ctdata = new NsApplicationControlData();
         size_t acsz = 0;
         Result rc = nsGetApplicationControlData(NsApplicationControlSource_Storage, this->ApplicationId, ctdata, sizeof(NsApplicationControlData), &acsz);
-        if((rc == 0) && !(acsz < sizeof(ctdata->nacp)))
+        if((R_SUCCEEDED(rc)) && !(acsz < sizeof(ctdata->nacp)))
         {
             icon = new u8[0x20000]();
             memcpy(icon, ctdata->icon, 0x20000);
@@ -98,7 +98,7 @@ namespace hos
         else
         {
             rc = nsGetApplicationControlData(NsApplicationControlSource_Storage, GetBaseApplicationId(this->ApplicationId, this->Type), ctdata, sizeof(NsApplicationControlData), &acsz);
-            if((rc == 0) && !(acsz < sizeof(ctdata->nacp)))
+            if((R_SUCCEEDED(rc)) && !(acsz < sizeof(ctdata->nacp)))
             {
                 icon = new u8[0x20000]();
                 memcpy(icon, ctdata->icon, 0x20000);
@@ -118,7 +118,9 @@ namespace hos
         {
             String fnacp = consts::Root + "/title/" + fappid + ".nacp";
             sdexp->DeleteFile(fnacp);
+            sdexp->StartFile(fnacp, fs::FileMode::Write);
             sdexp->WriteFileBlock(fnacp, (u8*)nacp, sizeof(NacpStruct));
+            sdexp->EndFile(fs::FileMode::Write);
             delete nacp;
         }
         u8 *jpg = this->TryGetIcon();
@@ -126,7 +128,9 @@ namespace hos
         {
             String fjpg = consts::Root + "/title/" + fappid + ".jpg";
             sdexp->DeleteFile(fjpg);
+            sdexp->StartFile(fjpg, fs::FileMode::Write);
             sdexp->WriteFileBlock(fjpg, jpg, 0x20000);
+            sdexp->EndFile(fs::FileMode::Write);
             delete[] jpg;
             hicon = true;
         }
@@ -140,10 +144,10 @@ namespace hos
         NcmContentMetaDatabase metadb;
         NcmContentStorage cst;
         Result rc = ncmOpenContentMetaDatabase(&metadb, static_cast<NcmStorageId>(this->Location));
-        if(rc == 0)
+        if(R_SUCCEEDED(rc))
         {
             rc = ncmOpenContentStorage(&cst, static_cast<NcmStorageId>(this->Location));
-            if(rc == 0) for(u32 i = 0; i < 6; i++)
+            if(R_SUCCEEDED(rc)) for(u32 i = 0; i < 6; i++)
             {
                 ContentId cntid;
                 memset(&cntid, 0, sizeof(cntid));
@@ -153,7 +157,7 @@ namespace hos
                 cntid.Location = this->Location;
                 NcmContentId ncaid;
                 rc = ncmContentMetaDatabaseGetContentIdByType(&metadb, &ncaid, &this->Record, (NcmContentType)i);
-                if(rc == 0)
+                if(R_SUCCEEDED(rc))
                 {
                     cntid.Empty = false;
                     cntid.NCAId = ncaid;
@@ -248,13 +252,13 @@ namespace hos
         std::vector<Title> titles;
         NcmContentMetaDatabase metadb;
         Result rc = ncmOpenContentMetaDatabase(&metadb, static_cast<NcmStorageId>(Location));
-        if(rc == 0)
+        if(R_SUCCEEDED(rc))
         {
             NcmContentMetaKey *recs = new NcmContentMetaKey[MaxTitleCount]();
             s32 wrt = 0;
             s32 total = 0;
             rc = ncmContentMetaDatabaseList(&metadb, &total, &wrt, recs, MaxTitleCount, static_cast<NcmContentMetaType>(Type), 0, 0, U64_MAX, NcmContentInstallType_Full);
-            if((rc == 0) && (wrt > 0))
+            if((R_SUCCEEDED(rc)) && (wrt > 0))
             {
                 titles.reserve(wrt);
                 for(s32 i = 0; i < wrt; i++)
@@ -328,7 +332,7 @@ namespace hos
         auto cnts = ToRemove.GetContents();
         NcmContentStorage cst;
         Result rc = ncmOpenContentStorage(&cst, static_cast<NcmStorageId>(ToRemove.Location));
-        if(rc == 0)
+        if(R_SUCCEEDED(rc))
         {
             if(!cnts.Meta.Empty) ncmContentStorageDelete(&cst, &cnts.Meta.NCAId);
             if(!cnts.Program.Empty) ncmContentStorageDelete(&cst, &cnts.Program.NCAId);
@@ -340,13 +344,13 @@ namespace hos
         serviceClose(&cst.s);
         NcmContentMetaDatabase metadb;
         rc = ncmOpenContentMetaDatabase(&metadb, static_cast<NcmStorageId>(ToRemove.Location));
-        if(rc == 0)
+        if(R_SUCCEEDED(rc))
         {
             rc = ncmContentMetaDatabaseRemove(&metadb, &ToRemove.Record);
-            if(rc == 0) ncmContentMetaDatabaseCommit(&metadb);
+            if(R_SUCCEEDED(rc)) ncmContentMetaDatabaseCommit(&metadb);
         }
         serviceClose(&metadb.s);
-        if(rc == 0) ns::DeleteApplicationRecord(ToRemove.ApplicationId);
+        if(R_SUCCEEDED(rc)) ns::DeleteApplicationRecord(ToRemove.ApplicationId);
         return rc;
     }
 
@@ -433,6 +437,7 @@ namespace hos
         TicketData tik;
         u64 off = 0;
         u32 tiksig = 0;
+        fexp->StartFile(Path, fs::FileMode::Read);
         fexp->ReadFileBlock(Path, off, sizeof(u32), (u8*)&tiksig);
         tik.Signature = static_cast<TicketSignature>(tiksig);
         u32 sigsz = 0;
@@ -475,6 +480,7 @@ namespace hos
         off = tikdata + 0x160 + 0xf;
         u8 kgen = 0;
         fexp->ReadFileBlock(Path, off, 1, &kgen);
+        fexp->EndFile(fs::FileMode::Read);
         tik.KeyGeneration = kgen;
         return tik;
     }

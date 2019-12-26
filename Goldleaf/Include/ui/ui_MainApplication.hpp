@@ -26,6 +26,7 @@
 #include <ui/ui_ContentInformationLayout.hpp>
 #include <ui/ui_ContentManagerLayout.hpp>
 #include <ui/ui_CopyLayout.hpp>
+#include <ui/ui_EmuiiboLayout.hpp>
 #include <ui/ui_ExploreMenuLayout.hpp>
 #include <ui/ui_FileContentLayout.hpp>
 #include <ui/ui_InstallLayout.hpp>
@@ -38,6 +39,7 @@
 #include <ui/ui_UnusedTicketsLayout.hpp>
 #include <ui/ui_TitleDumperLayout.hpp>
 #include <ui/ui_UpdateLayout.hpp>
+#include <ui/ui_WebBrowserLayout.hpp>
 
 #include <ui/ui_ClickableImage.hpp>
 
@@ -53,10 +55,12 @@ namespace ui
 
             void ShowNotification(String Text);
             void UpdateValues();
+            void ReturnToMainMenu();
             void LoadMenuData(String Name, std::string ImageName, String TempHead, bool CommonIcon = true);
             void LoadMenuHead(String Head);
             void UnloadMenuData();
             void browser_Input(u64 down, u64 up, u64 held);
+            void emuiibo_Input(u64 down, u64 up, u64 held);
             void exploreMenu_Input(u64 down, u64 up, u64 held);
             void pcExplore_Input(u64 down, u64 up, u64 held);
             void fileContent_Input(u64 down, u64 up, u64 held);
@@ -68,6 +72,7 @@ namespace ui
             void amiibo_Input(u64 down, u64 up, u64 held);
             void settings_Input(u64 down, u64 up, u64 held);
             void memory_Input(u64 down, u64 up, u64 held);
+            void webBrowser_Input(u64 down, u64 up, u64 held);
             void about_Input(u64 down, u64 up, u64 held);
             void userImage_OnClick();
             void helpImage_OnClick();
@@ -77,6 +82,7 @@ namespace ui
             PartitionBrowserLayout::Ref &GetBrowserLayout();
             FileContentLayout::Ref &GetFileContentLayout();
             CopyLayout::Ref &GetCopyLayout();
+            EmuiiboLayout::Ref &GetEmuiiboLayout();
             ExploreMenuLayout::Ref &GetExploreMenuLayout();
             PCExploreLayout::Ref &GetPCExploreLayout();
             InstallLayout::Ref &GetInstallLayout();
@@ -90,7 +96,9 @@ namespace ui
             SettingsLayout::Ref &GetSettingsLayout();
             MemoryLayout::Ref &GetMemoryLayout();
             UpdateLayout::Ref &GetUpdateLayout();
+            WebBrowserLayout::Ref &GetWebBrowserLayout();
             AboutLayout::Ref &GetAboutLayout();
+            
         private:
             u32 preblv;
             bool preisch;
@@ -103,6 +111,7 @@ namespace ui
             PartitionBrowserLayout::Ref browser;
             FileContentLayout::Ref fileContent;
             CopyLayout::Ref copy;
+            EmuiiboLayout::Ref emuiibo;
             ExploreMenuLayout::Ref exploreMenu;
             PCExploreLayout::Ref pcExplore;
             InstallLayout::Ref nspInstall;
@@ -116,6 +125,7 @@ namespace ui
             SettingsLayout::Ref settings;
             MemoryLayout::Ref memory;
             UpdateLayout::Ref update;
+            WebBrowserLayout::Ref webBrowser;
             AboutLayout::Ref about;
             pu::ui::elm::Image::Ref baseImage;
             pu::ui::elm::TextBlock::Ref timeText;

@@ -40,6 +40,15 @@ inline constexpr ResultWith<Args...> MakeResultWith(Result res, Args &...args)
     return std::make_tuple(res, std::forward<Args>(args)...);
 }
 
+// Thanks SciresM
+#define R_TRY(res_expr) \
+({ \
+    const Result _tmp_r_try_rc = res_expr; \
+    if (R_FAILED(_tmp_r_try_rc)) { \
+        return _tmp_r_try_rc; \
+    } \
+})
+
 namespace result
 {
     namespace module
@@ -54,7 +63,6 @@ namespace consts
 {
     extern std::string Root;
     extern std::string Log;
-    extern std::string TempUpdatePath;
 }
 
 enum class ExecutableMode
@@ -87,6 +95,9 @@ enum class Language
     Italian,
     Dutch,
 };
+
+std::string LanguageToString(Language lang);
+Language StringToLanguage(std::string str);
 
 struct ColorScheme
 {
@@ -133,4 +144,8 @@ bool IsAtmosphere();
 u64 GetCurrentApplicationId();
 u32 RandomFromRange(u32 Min, u32 Max);
 void EnsureDirectories();
+Result Initialize();
 void Close();
+
+// Exit calls Close!
+void Exit();

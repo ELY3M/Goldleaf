@@ -20,14 +20,52 @@
 */
 
 #include <Types.hpp>
-#include <fs/fs_Explorer.hpp>
+#include <fs/fs_FileSystem.hpp>
+#include <usb/usb_Detail.hpp>
+#include <es/es_Service.hpp>
+
+extern char** __system_argv;
+extern bool gupdated;
 
 namespace consts
 {
     std::string Root = "switch/Goldleaf";
     std::string Log = Root + "/Goldleaf.log";
-    std::string CrashesDir = Root + "/crash";
-    std::string TempUpdatePath = Root + "/UpdateTemp.nro";
+}
+
+std::string LanguageToString(Language lang)
+{
+    std::string langstr = "en"; // Default
+    switch(lang)
+    {
+        case Language::English:
+            return "en";
+        case Language::Spanish:
+            return "es";
+        case Language::German:
+            return "de";
+        case Language::French:
+            return "fr";
+        case Language::Italian:
+            return "it";
+        case Language::Dutch:
+            return "nl";
+        default:
+            break;
+    }
+    return langstr;
+}
+
+Language StringToLanguage(std::string str)
+{
+    auto lang = Language::English;
+    if(str == "en") lang = Language::English;
+    else if(str == "es") lang = Language::Spanish;
+    else if(str == "de") lang = Language::German;
+    else if(str == "fr") lang = Language::French;
+    else if(str == "it") lang = Language::Italian;
+    else if(str == "nl") lang = Language::Dutch;
+    return lang;
 }
 
 String Version::AsString()
@@ -146,7 +184,7 @@ void EnsureDirectories()
     sd->CreateDirectory(consts::Root + "/meta");
     sd->CreateDirectory(consts::Root + "/title");
     sd->CreateDirectory(consts::Root + "/dump");
-    sd->CreateDirectory(consts::Root + "/crash");
+    sd->CreateDirectory(consts::Root + "/reports");
     sd->CreateDirectory(consts::Root + "/amiibocache");
     sd->CreateDirectory(consts::Root + "/userdata");
     sd->CreateDirectory(consts::Root + "/dump/temp");
@@ -158,4 +196,61 @@ void Close()
 {
     if(GetLaunchMode() == LaunchMode::Application) libappletRequestHomeMenu();
     else exit(0);
+}
+
+Result Initialize()
+{
+    srand(time(NULL));
+    EnsureDirectories();
+
+    R_TRY(accountInitialize(AccountServiceType_Administrator));
+    R_TRY(ncmInitialize());
+    R_TRY(nsInitialize());
+    R_TRY(es::Initialize());
+    R_TRY(psmInitialize());
+    R_TRY(setInitialize());
+    R_TRY(setsysInitialize());
+    R_TRY(usb::detail::Initialize());
+    R_TRY(splInitialize());
+    R_TRY(nifmInitialize(NifmServiceType_Admin));
+    R_TRY(pdmqryInitialize());
+
+    return 0;
+}
+
+void Exit()
+{
+    // If Goldleaf updated itself in this session...
+    if(gupdated)
+    {
+        romfsExit();
+        fs::DeleteFile(__system_argv[0]);
+        fs::RenameFile("sdmc:/" + consts::Root + "/update_tmp.nro", __system_argv[0]);
+    }
+
+    auto fsopsbuf = fs::GetFileSystemOperationsBuffer();
+    operator delete[](fsopsbuf, std::align_val_t(0x1000));
+    auto nsys = fs::GetNANDSystemExplorer();
+    auto nsfe = fs::GetNANDSafeExplorer();
+    auto nusr = fs::GetNANDUserExplorer();
+    auto prif = fs::GetPRODINFOFExplorer();
+    auto sdcd = fs::GetSdCardExplorer();
+    delete nsys;
+    delete nsfe;
+    delete nusr;
+    delete prif;
+    delete sdcd;
+
+    splExit();
+    usb::detail::Exit();
+    setsysExit();
+    setExit();
+    psmExit();
+    es::Exit();
+    nsExit();
+    accountExit();
+    ncmExit();
+    nifmExit();
+    pdmqryExit();
+    Close();
 }

@@ -39,9 +39,9 @@ include $(DEVKITPRO)/libnx/switch_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
-SOURCES		:=	Source/fatfs Source/acc Source/dump Source/err Source/es Source/fs Source/hos Source/ncm Source/net Source/ns Source/nsp Source/set Source/nfp Source/ui Source/usb Source
+SOURCES		:=	Source/fatfs Source/acc Source/dump Source/err Source/es Source/fs Source/hos Source/ncm Source/net Source/ns Source/nsp Source/cfg Source/nfp Source/ui Source/usb Source
 DATA		:=	data
-INCLUDES	:=	Include/fatfs Include/acc Include/dump Include/err Include/es Include/fs Include/hos Include/ncm Include/net Include/nfp Include/ns Include/nsp Include/set Include/ui Include/usb Include
+INCLUDES	:=	Include/fatfs Include/acc Include/dump Include/err Include/es Include/fs Include/hos Include/ncm Include/net Include/nfp Include/ns Include/nsp Include/cfg Include/ui Include/usb Include
 ROMFS	:=	RomFs
 
 VER_MAJOR	:= 0
@@ -57,7 +57,7 @@ APP_VERSION := $(VER_MAJOR).$(VER_MINOR).$(VER_MICRO)-dev
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
-ARCH	:=	-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
+ARCH	:=	-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE -Wl,-wrap,fatalThrow
 
 CFLAGS	:=	-g -O2 -ffunction-sections \
 			$(ARCH) $(DEFINES)

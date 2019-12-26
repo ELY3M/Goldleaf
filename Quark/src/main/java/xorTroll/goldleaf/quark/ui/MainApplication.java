@@ -47,6 +47,7 @@ import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import xorTroll.goldleaf.quark.Config;
+import xorTroll.goldleaf.quark.Logging;
 import xorTroll.goldleaf.quark.Version;
 import xorTroll.goldleaf.quark.fs.FileSystem;
 import xorTroll.goldleaf.quark.usb.Command;
@@ -54,12 +55,16 @@ import xorTroll.goldleaf.quark.usb.USBInterface;
 
 public class MainApplication extends Application
 {
-    public static final Version QuarkVer = new Version(0, 2, 0);
+    public static final Version QuarkVer = new Version(0, 3, 0);
+    public static final Version MinGoldleafVer = new Version(0, 8, 0);
 
     public MainController controller;
     public Stage stage;
     public Scene scene;
-    public RandomAccessFile openedfile = null;
+    
+    public RandomAccessFile readfile = null;
+    public RandomAccessFile writefile = null;
+
     public USBInterface usbInterface = null;
     public String openedpath = null;
 
@@ -126,13 +131,13 @@ public class MainApplication extends Application
         Pane base = loader.load();
         cfg = new Config();
 
-        scene = new Scene(base, 590, 390);
+        scene = new Scene(base, 900, 400);
         scene.getStylesheets().add(getClass().getClassLoader().getResource("Main.css").toExternalForm());
         controller = loader.getController();
         primaryStage.getIcons().add(new Image(getClass().getClassLoader().getResource("Icon.png").toExternalForm()));
         primaryStage.setResizable(false);
         stage = primaryStage;
-        stage.setTitle("Quark v" + QuarkVer.toString() + " - Goldleaf USB client");
+        stage.setTitle("Quark v" + QuarkVer.toString() + " - Goldleaf's USB client");
         stage.setScene(scene);
 
         Task<Void> usbtask = new Task<Void>()
@@ -146,14 +151,9 @@ public class MainApplication extends Application
                     showDialog("USB fail", "No USB connection was found. Check the following:\n\n - Is the console connected properly to this system?\n - Are you sure Goldleaf is open? \n - Is a small USB icon shown above?", "Ok", true);
                 }
                 usbInterface = intf.get();
-                if(usbInterface.productVersion == null)
-                {
-                    showDialog("Connection issues", "The connection found doesn't seem to be Goldleaf. Check the following:\n\n - Is the console connected properly to this system?\n - Are you sure Goldleaf is open? \n - Is a small USB icon shown above?", "Ok", true);
-                }
-                if(usbInterface.isDevVersion)
-                {
-                    showDialog("Development version", "The connected Goldleaf (v" + usbInterface.productVersion.toString() + ") is a development build.\nThis build might be unstable. Use it at your own risk!", "Ok", false);
-                }
+                if(usbInterface.productVersion == null) showDialog("Connection issues", "The connection found doesn't seem to be Goldleaf. Check the following:\n\n - Is the console connected properly to this system?\n - Are you sure Goldleaf is open? \n - Is a small USB icon shown above?", "Ok", true);
+                if(usbInterface.productVersion.olderThan(MinGoldleafVer)) showDialog("Outdated Goldleaf", "The Goldleaf Quark connected to is outdated.\nPlease update to v0.8 or higher.", "Ok", true);
+                if(usbInterface.isDevVersion) showDialog("Development version", "The connected Goldleaf (v" + usbInterface.productVersion.toString() + ") is a development build.\nThis build might be unstable. Use it at your own risk!", "Ok", false);
                 updateMessage("Connected to Goldleaf v" + usbInterface.productVersion.toString() + (usbInterface.isDevVersion ? " (dev build)" : "") + " - Processing USB input...");
                 Vector<String> drives = null;
                 while(true)
@@ -181,14 +181,7 @@ public class MainApplication extends Application
                     {
                         int cmdid = c.read32();
                         Command.Id id = Command.Id.from32(cmdid);
-                        if((openedfile != null) && (id != Command.Id.ReadFile) && (id != Command.Id.WriteFile))
-                        {
-                            openedfile.close();
-                            openedfile = null;
-                            updateMessage("Processing USB input from Goldleaf...");
-                            updateProgress(-1.0, -1.0);
-                        }
-                        System.out.println("Command: " + id.toString());
+                        Logging.log("Command: " + id.toString());
                         switch(id)
                         {
                             case GetDriveCount:
@@ -291,6 +284,25 @@ public class MainApplication extends Application
                                 else c.respondFailure(0xDEAD);
                                 break;
                             }
+                            case StartFile:
+                            {
+                                String path = FileSystem.denormalizePath(c.readString());
+                                int mode = c.read32();
+                                if(mode == 1)
+                                {
+                                    if(readfile != null) readfile.close();
+                                    readfile = new RandomAccessFile(path, "rw");
+                                }
+                                else
+                                {
+                                    if(writefile != null) writefile.close();
+                                    writefile = new RandomAccessFile(path, "rw");
+                                    if(mode == 3) writefile.seek(writefile.length());
+                                }
+                                c.respondEmpty();
+
+                                break;
+                            }
                             case ReadFile:
                             {
                                 String path = FileSystem.denormalizePath(c.readString());
@@ -298,28 +310,28 @@ public class MainApplication extends Application
                                 long size = c.read64();
                                 try
                                 {
-                                    if((openedfile == null) || !openedpath.equalsIgnoreCase(path))
+                                    if(readfile != null)
                                     {
-                                        openedpath = path;
-                                        if(openedfile != null)
-                                        {
-                                            openedfile.close();
-                                            openedfile = null;
-                                        }
-                                        openedfile = new RandomAccessFile(openedpath, "rw");
+                                        byte[] block = new byte[(int)size];
+                                        readfile.seek(offset);
+                                        int read = readfile.read(block, 0, (int)size);
+                                        c.responseStart();
+                                        c.write64((long)read);
+                                        c.responseEnd();
+                                        c.sendBuffer(block);
                                     }
                                     else
                                     {
-                                        updateMessage("Goldleaf is reading a file: " + path);
-                                        updateProgress(offset, openedfile.length());
+                                        RandomAccessFile raf = new RandomAccessFile(path, "rw");
+                                        byte[] block = new byte[(int)size];
+                                        raf.seek(offset);
+                                        int read = raf.read(block, 0, (int)size);
+                                        raf.close();
+                                        c.responseStart();
+                                        c.write64((long)read);
+                                        c.responseEnd();
+                                        c.sendBuffer(block);
                                     }
-                                    byte[] block = new byte[(int)size];
-                                    openedfile.seek(offset);
-                                    int read = openedfile.read(block, 0, (int)size);
-                                    c.responseStart();
-                                    c.write64((long)read);
-                                    c.responseEnd();
-                                    c.sendBuffer(block);
                                 }
                                 catch(Exception e)
                                 {
@@ -334,24 +346,46 @@ public class MainApplication extends Application
                                 byte[] data = c.getBuffer((int)size);
                                 try
                                 {
-                                    if((openedfile == null) || !openedpath.equalsIgnoreCase(path))
+                                    if(writefile != null)
                                     {
-                                        openedpath = path;
-                                        if(openedfile != null)
-                                        {
-                                            openedfile.close();
-                                            openedfile = null;
-                                        }
-                                        openedfile = new RandomAccessFile(openedpath, "rw");
+                                        writefile.write(data);
+                                        c.respondEmpty();
                                     }
-                                    openedfile.seek(openedfile.length());
-                                    openedfile.write(data);
-                                    c.respondEmpty();
+                                    else
+                                    {
+                                        RandomAccessFile raf = new RandomAccessFile(path, "rw");
+                                        raf.write(data);
+                                        raf.close();
+                                        c.respondEmpty();
+                                    }
                                 }
                                 catch(Exception e)
                                 {
                                     c.respondFailure(0xDEAD);
                                 }
+                                break;
+                            }
+                            case EndFile:
+                            {
+                                int mode = c.read32();
+                                if(mode == 1)
+                                {
+                                    if(readfile != null)
+                                    {
+                                        readfile.close();
+                                        readfile = null;
+                                    }
+                                }
+                                else
+                                {
+                                    if(writefile != null)
+                                    {
+                                        writefile.close();
+                                        writefile = null;
+                                    }
+                                }
+                                c.respondEmpty();
+
                                 break;
                             }
                             case Create:
@@ -474,7 +508,7 @@ public class MainApplication extends Application
                             }
                             default:
                             {
-                                System.out.println("Unknown Id: " + cmdid);
+                                Logging.log("Unknown Id: " + cmdid);
                                 break;
                             }
                         }

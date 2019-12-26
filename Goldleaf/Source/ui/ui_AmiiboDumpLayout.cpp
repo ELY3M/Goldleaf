@@ -22,8 +22,8 @@
 #include <ui/ui_AmiiboDumpLayout.hpp>
 #include <ui/ui_MainApplication.hpp>
 
-extern ui::MainApplication::Ref mainapp;
-extern set::Settings gsets;
+extern ui::MainApplication::Ref global_app;
+extern cfg::Settings global_settings;
 
 namespace ui
 {
@@ -31,23 +31,23 @@ namespace ui
     {
         this->infoText = pu::ui::elm::TextBlock::New(150, 320, "-");
         this->infoText->SetHorizontalAlign(pu::ui::elm::HorizontalAlign::Center);
-        this->infoText->SetColor(gsets.CustomScheme.Text);
+        this->infoText->SetColor(global_settings.custom_scheme.Text);
         this->Add(this->infoText);
     }
 
     void AmiiboDumpLayout::StartDump()
     {
-        this->infoText->SetText(set::GetDictionaryEntry(294));
+        this->infoText->SetText(cfg::strings::Main.GetString(294));
         auto rc = nfp::Initialize();
-        if(rc == 0)
+        if(R_SUCCEEDED(rc))
         {
-            this->infoText->SetText(set::GetDictionaryEntry(295));
+            this->infoText->SetText(cfg::strings::Main.GetString(295));
             while(!nfp::IsReady())
             {
-                mainapp->CallForRender();
+                global_app->CallForRender();
             }
             auto rc = nfp::Open();
-            if(rc == 0)
+            if(R_SUCCEEDED(rc))
             {
                 auto tag = nfp::GetTagInfo();
                 auto model = nfp::GetModelInfo();
@@ -55,12 +55,12 @@ namespace ui
                 auto reg = nfp::GetRegisterInfo();
 
                 auto name = String(reg.amiibo_name);
-                auto sopt = mainapp->CreateShowDialog(set::GetDictionaryEntry(283), set::GetDictionaryEntry(317) + " '" + name + "'?", { set::GetDictionaryEntry(111), set::GetDictionaryEntry(112) }, true);
+                auto sopt = global_app->CreateShowDialog(cfg::strings::Main.GetString(283), cfg::strings::Main.GetString(317) + " '" + name + "'?", { cfg::strings::Main.GetString(111), cfg::strings::Main.GetString(112) }, true);
                 if(sopt == 0)
                 {
-                    this->infoText->SetText(set::GetDictionaryEntry(296) + " '" + name + "' " + set::GetDictionaryEntry(297));
+                    this->infoText->SetText(cfg::strings::Main.GetString(296) + " '" + name + "' " + cfg::strings::Main.GetString(297));
                     nfp::DumpToEmuiibo(tag, reg, common, model);
-                    mainapp->ShowNotification("'" + name + "' " + set::GetDictionaryEntry(298));
+                    global_app->ShowNotification("'" + name + "' " + cfg::strings::Main.GetString(298));
                 }
                 nfp::Close();
             }

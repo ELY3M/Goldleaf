@@ -22,41 +22,41 @@
 #include <ui/ui_SettingsLayout.hpp>
 #include <ui/ui_MainApplication.hpp>
 
-extern ui::MainApplication::Ref mainapp;
-extern set::Settings gsets;
+extern ui::MainApplication::Ref global_app;
+extern cfg::Settings global_settings;
 
 namespace ui
 {
     SettingsLayout::SettingsLayout() : pu::ui::Layout()
     {
-        this->optsMenu = pu::ui::elm::Menu::New(0, 160, 1280, gsets.CustomScheme.Base, gsets.MenuItemSize, (560 / gsets.MenuItemSize));
-        this->optsMenu->SetOnFocusColor(gsets.CustomScheme.BaseFocus);
-        gsets.ApplyScrollBarColor(this->optsMenu);
-        auto itm = pu::ui::elm::MenuItem::New(set::GetDictionaryEntry(352));
-        itm->SetColor(gsets.CustomScheme.Text);
+        this->optsMenu = pu::ui::elm::Menu::New(0, 160, 1280, global_settings.custom_scheme.Base, global_settings.menu_item_size, (560 / global_settings.menu_item_size));
+        this->optsMenu->SetOnFocusColor(global_settings.custom_scheme.BaseFocus);
+        global_settings.ApplyScrollBarColor(this->optsMenu);
+        auto itm = pu::ui::elm::MenuItem::New(cfg::strings::Main.GetString(352));
+        itm->SetColor(global_settings.custom_scheme.Text);
         itm->AddOnClick(std::bind(&SettingsLayout::optsFirmware_Click, this));
         this->optsMenu->AddItem(itm);
-        auto itm2 = pu::ui::elm::MenuItem::New(set::GetDictionaryEntry(353));
-        itm2->SetColor(gsets.CustomScheme.Text);
+        auto itm2 = pu::ui::elm::MenuItem::New(cfg::strings::Main.GetString(353));
+        itm2->SetColor(global_settings.custom_scheme.Text);
         itm2->AddOnClick(std::bind(&SettingsLayout::optsMemory_Click, this));
         this->optsMenu->AddItem(itm2);
-        auto itm3 = pu::ui::elm::MenuItem::New(set::GetDictionaryEntry(354));
-        itm3->SetColor(gsets.CustomScheme.Text);
+        auto itm3 = pu::ui::elm::MenuItem::New(cfg::strings::Main.GetString(354));
+        itm3->SetColor(global_settings.custom_scheme.Text);
         itm3->AddOnClick(std::bind(&SettingsLayout::optsConfig_Click, this));
         this->optsMenu->AddItem(itm3);
         this->progressInfo = pu::ui::elm::ProgressBar::New(340, 360, 600, 30, 100.0f);
         this->progressInfo->SetVisible(false);
-        gsets.ApplyProgressBarColor(this->progressInfo);
+        global_settings.ApplyProgressBarColor(this->progressInfo);
         this->Add(this->optsMenu);
         this->Add(this->progressInfo);
     }
 
     void SettingsLayout::optsConfig_Click()
     {
-        String msg = set::GetDictionaryEntry(354) + ":\n";
-        msg += String("\n" + set::GetDictionaryEntry(355) + ": ") + (gsets.IgnoreRequiredFirmwareVersion ? set::GetDictionaryEntry(111) : set::GetDictionaryEntry(112));
-        if(!gsets.ExternalRomFs.empty()) msg += "\n" + set::GetDictionaryEntry(356) + ": 'SdCard:/" + gsets.ExternalRomFs + "'";
-        mainapp->CreateShowDialog(set::GetDictionaryEntry(357), msg, { set::GetDictionaryEntry(234) }, true);
+        String msg = cfg::strings::Main.GetString(354) + ":\n";
+        msg += String("\n" + cfg::strings::Main.GetString(355) + ": ") + (global_settings.ignore_required_fw_ver ? cfg::strings::Main.GetString(111) : cfg::strings::Main.GetString(112));
+        if(!global_settings.external_romfs.empty()) msg += "\n" + cfg::strings::Main.GetString(356) + ": 'SdCard:/" + global_settings.external_romfs + "'";
+        global_app->CreateShowDialog(cfg::strings::Main.GetString(357), msg, { cfg::strings::Main.GetString(234) }, true);
     }
 
     void SettingsLayout::ExportUpdateToDirectory(String Input, SetSysFirmwareVersion Fw)
@@ -65,19 +65,19 @@ namespace ui
         auto exp = fs::GetNANDSystemExplorer();
         this->optsMenu->SetVisible(false);
         this->progressInfo->SetVisible(true);
-        mainapp->LoadMenuHead(set::GetDictionaryEntry(359) + " " + Fw.display_version + "...");
+        global_app->LoadMenuHead(cfg::strings::Main.GetString(359) + " " + Fw.display_version + "...");
         auto outdir = sd->FullPathFor(consts::Root + "/dump/update/" + Fw.display_version);
         sd->DeleteDirectory(outdir);
         exp->CopyDirectoryProgress(Input, outdir, [&](double Done, double Total)
         {
             this->progressInfo->SetMaxValue(Total);
             this->progressInfo->SetProgress(Done);
-            mainapp->CallForRender();
+            global_app->CallForRender();
         });
-        mainapp->LoadMenuData(set::GetDictionaryEntry(43), "Settings", set::GetDictionaryEntry(44));
+        global_app->LoadMenuData(cfg::strings::Main.GetString(43), "Settings", cfg::strings::Main.GetString(44));
         this->optsMenu->SetVisible(true);
         this->progressInfo->SetVisible(false);
-        mainapp->ShowNotification(set::GetDictionaryEntry(358) + " '" + outdir + "'.");
+        global_app->ShowNotification(cfg::strings::Main.GetString(358) + " '" + outdir + "'.");
     }
 
     void SettingsLayout::ExportUpdateToNSP(String Input, SetSysFirmwareVersion Fw)
@@ -86,24 +86,24 @@ namespace ui
         auto exp = fs::GetNANDSystemExplorer();
         this->optsMenu->SetVisible(false);
         this->progressInfo->SetVisible(true);
-        mainapp->LoadMenuHead(set::GetDictionaryEntry(359) + " " + Fw.display_version + "...");
+        global_app->LoadMenuHead(cfg::strings::Main.GetString(359) + " " + Fw.display_version + "...");
         auto outnsp = sd->FullPathFor(consts::Root + "/dump/update/" + Fw.display_version + ".nsp");
         sd->DeleteFile(outnsp);
         nsp::GenerateFrom(exp->FullPathFor(Input), outnsp, [&](u64 Done, u64 Total)
         {
             this->progressInfo->SetMaxValue((double)Total);
             this->progressInfo->SetProgress((double)Done);
-            mainapp->CallForRender();
+            global_app->CallForRender();
         });
-        mainapp->LoadMenuData(set::GetDictionaryEntry(43), "Settings", set::GetDictionaryEntry(44));
+        global_app->LoadMenuData(cfg::strings::Main.GetString(43), "Settings", cfg::strings::Main.GetString(44));
         this->optsMenu->SetVisible(true);
         this->progressInfo->SetVisible(false);
-        mainapp->ShowNotification(set::GetDictionaryEntry(358) + " '" + outnsp + "'.");
+        global_app->ShowNotification(cfg::strings::Main.GetString(358) + " '" + outnsp + "'.");
     }
 
     void SettingsLayout::HandleUpdate(String Base, SetSysFirmwareVersion Fw)
     {
-        auto sopt2 = mainapp->CreateShowDialog(set::GetDictionaryEntry(360), set::GetDictionaryEntry(361), { set::GetDictionaryEntry(377), set::GetDictionaryEntry(53), set::GetDictionaryEntry(18)}, true);
+        auto sopt2 = global_app->CreateShowDialog(cfg::strings::Main.GetString(360), cfg::strings::Main.GetString(361), { cfg::strings::Main.GetString(377), cfg::strings::Main.GetString(53), cfg::strings::Main.GetString(18)}, true);
         if(sopt2 == 0) ExportUpdateToDirectory(Base, Fw);
         else if(sopt2 == 1) ExportUpdateToNSP(Base, Fw);
     }
@@ -112,38 +112,38 @@ namespace ui
     {
         SetSysFirmwareVersion fwver = {};
         setsysGetFirmwareVersion(&fwver);
-        String msg = set::GetDictionaryEntry(362) + ":\n";
-        msg += String("\n" + set::GetDictionaryEntry(363) + ": ") + fwver.display_version + " (" + fwver.display_title + ")";
-        msg += String("\n" + set::GetDictionaryEntry(364) + ": '") + fwver.version_hash + "'";
-        msg += String("\n" + set::GetDictionaryEntry(95) + " ") + std::to_string(hos::ComputeSystemKeyGeneration());
-        msg += "\n\n" + set::GetDictionaryEntry(365) + ":\n";
+        String msg = cfg::strings::Main.GetString(362) + ":\n";
+        msg += String("\n" + cfg::strings::Main.GetString(363) + ": ") + fwver.display_version + " (" + fwver.display_title + ")";
+        msg += String("\n" + cfg::strings::Main.GetString(364) + ": '") + fwver.version_hash + "'";
+        msg += String("\n" + cfg::strings::Main.GetString(95) + " ") + std::to_string(hos::ComputeSystemKeyGeneration());
+        msg += "\n\n" + cfg::strings::Main.GetString(365) + ":\n";
         hos::PendingUpdateVersion pupd = {};
         bool pendingpresent = hos::GetPendingUpdateInfo(&pupd);
         auto pendfwver = hos::ConvertPendingUpdateVersion(pupd);
         if(pendingpresent)
         {
-            msg += String("\n" + set::GetDictionaryEntry(363) + ": ") + std::to_string(pupd.Major) + "." + std::to_string(pupd.Minor) + "." + std::to_string(pupd.Micro);
-            msg += "\n" + set::GetDictionaryEntry(366);
+            msg += String("\n" + cfg::strings::Main.GetString(363) + ": ") + std::to_string(pupd.Major) + "." + std::to_string(pupd.Minor) + "." + std::to_string(pupd.Micro);
+            msg += "\n" + cfg::strings::Main.GetString(366);
         }
-        else msg += "\n" + set::GetDictionaryEntry(367);
+        else msg += "\n" + cfg::strings::Main.GetString(367);
 
-        std::vector<String> opts = {set::GetDictionaryEntry(234), set::GetDictionaryEntry(368)};
+        std::vector<String> opts = {cfg::strings::Main.GetString(234), cfg::strings::Main.GetString(368)};
         if(pendingpresent)
         {
-            opts.push_back(set::GetDictionaryEntry(369));
-            opts.push_back(set::GetDictionaryEntry(370));
+            opts.push_back(cfg::strings::Main.GetString(369));
+            opts.push_back(cfg::strings::Main.GetString(370));
         }
 
-        auto sopt = mainapp->CreateShowDialog(set::GetDictionaryEntry(360), msg, opts, false);
+        auto sopt = global_app->CreateShowDialog(cfg::strings::Main.GetString(360), msg, opts, false);
         if(sopt == 0) return;
         else if(sopt == 1) this->HandleUpdate("Contents/registered", fwver);
         else if(sopt == 2)
         {
-            auto sopt = mainapp->CreateShowDialog(set::GetDictionaryEntry(371), set::GetDictionaryEntry(372) + "\n" + set::GetDictionaryEntry(373), { set::GetDictionaryEntry(111), set::GetDictionaryEntry(18) }, true);
+            auto sopt = global_app->CreateShowDialog(cfg::strings::Main.GetString(371), cfg::strings::Main.GetString(372) + "\n" + cfg::strings::Main.GetString(373), { cfg::strings::Main.GetString(111), cfg::strings::Main.GetString(18) }, true);
             if(sopt == 0)
             {
                 hos::CleanPendingUpdate();
-                mainapp->ShowNotification(set::GetDictionaryEntry(374));
+                global_app->ShowNotification(cfg::strings::Main.GetString(374));
             }
         }
         else if(sopt == 3) this->HandleUpdate("Contents/placehld", pendfwver);
@@ -151,7 +151,7 @@ namespace ui
 
     void SettingsLayout::optsMemory_Click()
     {
-        mainapp->GetMemoryLayout()->UpdateElements();
-        mainapp->LoadLayout(mainapp->GetMemoryLayout());
+        global_app->GetMemoryLayout()->UpdateElements();
+        global_app->LoadLayout(global_app->GetMemoryLayout());
     }
 }
